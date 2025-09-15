@@ -12,14 +12,10 @@ if File.exist?('.env')
 end
 
 Vagrant.configure("2") do |config|
-  # Use Ubuntu ARM64 box for Apple Silicon compatibility
-  config.vm.box = "bento/ubuntu-22.04-arm64"
+  config.vm.box = "generic/alpine318"
   
   # VM configuration
   config.vm.hostname = ENV['TAILSCALE_HOSTNAME'] || "leezy-vm"
-  
-  # Network configuration
-  config.vm.network "private_network", type: "dhcp"
   
   # Forward TinyProxy port
   config.vm.network "forwarded_port", guest: 8888, host: 8888
@@ -51,7 +47,7 @@ Vagrant.configure("2") do |config|
   tailscale_accept_routes = ENV['TAILSCALE_ACCEPT_ROUTES'] || "true"
   
   # Provisioning - adapted for Ubuntu/Debian systems
-  config.vm.provision "shell", path: "provision-arm.sh", env: {
+  config.vm.provision "shell", path: "provision.sh", env: {
     "TAILSCALE_AUTH_KEY" => tailscale_auth_key,
     "TAILSCALE_HOSTNAME" => tailscale_hostname,
     "TAILSCALE_ACCEPT_ROUTES" => tailscale_accept_routes
