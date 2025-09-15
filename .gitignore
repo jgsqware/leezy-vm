@@ -1,0 +1,23 @@
+# Vagrant files
+.vagrant/
+*.log
+
+# Environment files
+.env
+**/.env
+
+# Devbox files
+.devbox/
+devbox.lock
+# VM disk files
+*.vdi
+*.vmdk
+*.qcow2
+
+# Backup files
+*.bak
+*~
+
+# OS files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,66 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/main/.schema/devbox.schema.json",
+  "packages": ["vagrant@2.4.1", "virtualbox@latest", "gum@latest"],
+  "env": {
+    "VAGRANT_DEFAULT_PROVIDER": "docker"
+  },
+  "shell": {
+    "init_hook": [
+      "gum style --foreground 212 --border-foreground 212 --border double --align center --width 50 --margin '1 2' --padding '2 4' '📦 Leezy VM (Docker)' 'Devbox Environment Loaded'",
+      "echo ''",
+      "if [ ! -f .env ]; then",
+      "  gum style --foreground 214 '⚠️  No .env file found. Creating from template...'",
+      "  cp .env.example .env",
+      "  gum style --foreground 46 '✅ Created .env file.'",
+      "  gum style --foreground 214 'Please edit .env and add your TAILSCALE_AUTH_KEY'",
+      "  echo ''",
+      "fi",
+      "gum style --foreground 117 --bold 'Available commands:'",
+      "echo ''",
+      "gum style --foreground 183 '  devbox run start     - Start the VM'",
+      "gum style --foreground 183 '  devbox run connect   - Connect to the VM'",
+      "gum style --foreground 183 '  devbox run stop      - Stop the VM'",
+      "gum style --foreground 183 '  devbox run clean     - Remove the VM'",
+      "echo ''",
+      "gum style --foreground 46 --bold 'VM Status:'",
+      "vagrant status"
+    ],
+    "scripts": {
+      "setup": [
+        "gum style --foreground 117 --bold 'Setting up environment...'",
+        "cp .env.example .env",
+        "gum style --foreground 46 '✅ Created .env file'",
+        "gum style --foreground 214 'Please edit .env and add your TAILSCALE_AUTH_KEY'"
+      ],
+      "start": [
+        "gum style --foreground 117 --bold 'Starting Vagrant VM...'",
+        "gum spin --spinner dot --title 'Starting VM...' -- vagrant up",
+        "gum style --foreground 46 --border-foreground 46 --border rounded --padding '1 2' '✅ VM Started Successfully!'"
+      ],
+      "stop": [
+        "gum style --foreground 214 --bold 'Stopping Vagrant VM...'",
+        "gum spin --spinner dot --title 'Stopping VM...' -- vagrant halt",
+        "gum style --foreground 46 '✅ VM stopped'"
+      ],
+      "clean": [
+        "gum confirm --default=false 'Are you sure you want to destroy the VM?' || exit 0",
+        "gum style --foreground 196 --bold 'Destroying Vagrant VM...'",
+        "gum spin --spinner dot --title 'Destroying VM...' -- vagrant destroy -f",
+        "gum style --foreground 46 '✅ VM destroyed'"
+      ],
+      "connect": [
+        "gum style --foreground 117 --bold 'Connecting to VM...'",
+        "vagrant ssh"
+      ],
+      "status": [
+        "gum style --foreground 117 --bold 'VM Status:'",
+        "vagrant status"
+      ],
+      "provision": [
+        "gum style --foreground 117 --bold 'Re-provisioning VM...'",
+        "gum spin --spinner dot --title 'Provisioning...' -- vagrant provision",
+        "gum style --foreground 46 '✅ Provisioning complete'"
+      ]
+    }
+  }
+}

@@ -1,0 +1,177 @@
+# Lima configuration for Leezy VM
+# Lightweight VM with SSH, Tailscale, and TinyProxy
+
+# VM Image - Alpine Linux for minimal footprint
+images:
+  - location: "https://github.com/lima-vm/alpine-lima/releases/download/v0.2.37/alpine-lima-std-3.18.4-x86_64.iso"
+    arch: "x86_64"
+  - location: "https://github.com/lima-vm/alpine-lima/releases/download/v0.2.37/alpine-lima-std-3.18.4-aarch64.iso"
+    arch: "aarch64"
+
+# VM Resources
+cpus: 1
+memory: "512MiB"
+disk: "4GiB"
+
+# Network configuration
+networks:
+  - lima: shared
+    # macAddress: "52:55:55:12:34:56" # Optionally set a static MAC
+
+# Port forwarding
+portForwards:
+  - guestPort: 22
+    hostPort: 0 # Random host port
+  - guestPort: 8888
+    hostPort: 8888 # TinyProxy
+
+# SSH configuration
+ssh:
+  localPort: 0 # Random local port for SSH
+  loadDotSSHPubKeys: true
+
+# Mounts
+mounts:
+  - location: "~"
+    writable: false
+  - location: "/tmp/lima"
+    writable: true
+
+# Environment variables from .env file
+env:
+  TAILSCALE_AUTH_KEY: "{{.Env.TAILSCALE_AUTH_KEY}}"
+  TAILSCALE_HOSTNAME: "{{.Env.TAILSCALE_HOSTNAME}}"
+  TAILSCALE_ACCEPT_ROUTES: "{{.Env.TAILSCALE_ACCEPT_ROUTES}}"
+
+# Provisioning script
+provision:
+  - mode: system
+    script: |
+      #!/bin/sh
+      set -e
+      
+      echo "Starting Leezy VM provisioning on Lima..."
+      
+      # Update package repository
+      apk update
+      
+      # Install essential packages
+      apk add --no-cache \
+          openssh \
+          openssh-server \
+          curl \
+          wget \
+          bash \
+          sudo \
+          iptables \
+          ip6tables \
+          ca-certificates
+      
+      # Configure SSH
+      echo "Configuring SSH..."
+      rc-update add sshd default
+      rc-service sshd start || true
+      
+      # Install Tailscale
+      echo "Installing Tailscale..."
+      apk add --no-cache tailscale
+      
+      # Enable and start Tailscale service
+      rc-update add tailscale default
+      rc-service tailscale start || true
+      
+      # Install TinyProxy
+      echo "Installing TinyProxy..."
+      apk add --no-cache tinyproxy
+      
+      # Configure TinyProxy
+      cat > /etc/tinyproxy/tinyproxy.conf << 'EOF'
+      User tinyproxy
+      Group tinyproxy
+      Port 8888
+      Timeout 600
+      DefaultErrorFile "/usr/share/tinyproxy/default.html"
+      StatFile "/usr/share/tinyproxy/stats.html"
+      LogLevel Info
+      MaxClients 100
+      MinSpareServers 5
+      MaxSpareServers 20
+      StartServers 10
+      MaxRequestsPerChild 0
+      
+      # Allow connections from any IP
+      Allow 0.0.0.0/0
+      
+      # Connection settings
+      ConnectPort 443
+      ConnectPort 563
+      ConnectPort 80
+      EOF
+      
+      # Enable and start TinyProxy service
+      rc-update add tinyproxy default
+      rc-service tinyproxy start || true
+      
+      echo "Base provisioning complete!"
+
+  - mode: user
+    script: |
+      #!/bin/bash
+      
+      # Auto-authenticate Tailscale if auth key is provided
+      if [ ! -z "$TAILSCALE_AUTH_KEY" ]; then
+          echo "Authenticating Tailscale with provided auth key..."
+          sleep 2
+          
+          # Build tailscale up command with options
+          TS_CMD="sudo tailscale up --authkey=\"$TAILSCALE_AUTH_KEY\""
+          
+          # Add hostname if provided
+          if [ ! -z "$TAILSCALE_HOSTNAME" ]; then
+              TS_CMD="$TS_CMD --hostname=\"${TAILSCALE_HOSTNAME:-leezy-vm}\""
+          fi
+          
+          # Add accept-routes flag if enabled
+          if [ "${TAILSCALE_ACCEPT_ROUTES:-true}" = "true" ]; then
+              TS_CMD="$TS_CMD --accept-routes"
+          fi
+          
+          # Execute the command
+          eval $TS_CMD || {
+              echo "Warning: Tailscale authentication failed. You may need to authenticate manually."
+          }
+          echo "Tailscale status:"
+          sudo tailscale status || true
+      else
+          echo ""
+          echo "================================"
+          echo "Tailscale not configured"
+          echo "================================"
+          echo "To authenticate Tailscale, run:"
+          echo "  limactl shell leezy-vm"
+          echo "  sudo tailscale up"
+          echo "================================"
+      fi
+      
+      echo ""
+      echo "================================"
+      echo "Leezy VM is ready!"
+      echo "================================"
+      echo "Services:"
+      echo "  - SSH: limactl shell leezy-vm"
+      echo "  - TinyProxy: http://localhost:8888"
+      echo "  - Tailscale: configured"
+      echo "================================"
+
+# Message shown after VM is started
+message: |
+  Leezy VM is running!
+  
+  To access the VM:
+    limactl shell leezy-vm
+  
+  TinyProxy is available at:
+    http://localhost:8888
+  
+  To check Tailscale status:
+    limactl shell leezy-vm sudo tailscale status
