@@ -1,9 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/main/.schema/devbox.schema.json",
-  "packages": [
-    "lima@latest",
-    "gum@latest"
-  ],
+  "packages": ["lima@latest", "gum@latest", "git@latest"],
   "env": {
     "LIMA_INSTANCE": "leezy-vm"
   },
@@ -14,14 +11,14 @@
       "if [ ! -f .env ]; then",
       "  gum style --foreground 214 '⚠️  No .env file found. Creating from template...'",
       "  cp .env.example .env",
-      "  gum style --foreground 46 '✅ Created .env file.'", 
+      "  gum style --foreground 46 '✅ Created .env file.'",
       "  gum style --foreground 214 'Please edit .env and add your TAILSCALE_AUTH_KEY'",
       "  echo ''",
       "fi",
       "gum style --foreground 117 --bold 'Available commands:'",
       "echo ''",
       "gum style --foreground 183 '  devbox run start     - Start the Lima VM'",
-      "gum style --foreground 183 '  devbox run connect   - Connect to the VM'", 
+      "gum style --foreground 183 '  devbox run connect   - Connect to the VM'",
       "gum style --foreground 183 '  devbox run stop      - Stop the VM'",
       "gum style --foreground 183 '  devbox run status    - Check VM status'",
       "gum style --foreground 183 '  devbox run destroy   - Remove the VM'",
@@ -45,7 +42,7 @@
         "gum spin --spinner dot --title 'Loading environment variables...' -- sleep 1",
         "if [ -f .env ]; then",
         "  set -a",
-        "  source .env", 
+        "  source .env",
         "  set +a",
         "  gum style --foreground 46 '✅ Environment loaded'",
         "else",

@@ -107,7 +107,7 @@ else
         --header.foreground 117 \
         "Lima (Recommended - Lightweight, native macOS support)" \
         "Vagrant with virtualization provider")
-    
+
     if [[ "$choice" == "Lima"* ]]; then
         choice="1"
     else
@@ -120,21 +120,21 @@ if [[ "$choice" == "1" ]]; then
     echo ""
     show_info "Setting up with Lima via Devbox..."
     echo ""
-    
+
     # Check if Devbox is installed
     if ! command -v devbox &> /dev/null; then
         show_info "Installing Devbox..."
-        
+
         if [[ "$USE_PLAIN" == "true" ]]; then
             curl -fsSL https://get.jetify.com/devbox | bash
         else
             gum spin --spinner dot --title "Installing Devbox..." -- \
                 bash -c "curl -fsSL https://get.jetify.com/devbox | bash"
         fi
-        
+
         # Reload shell to ensure devbox is available
         export PATH="$HOME/.local/bin:$PATH"
-        
+
         if ! command -v devbox &> /dev/null; then
             show_error "Failed to install Devbox. Please restart your terminal and try again."
             exit 1
@@ -142,10 +142,13 @@ if [[ "$choice" == "1" ]]; then
     else
         show_success "Devbox is already installed"
     fi
-    
+
     show_success "Lima will be installed and managed within Devbox environment"
     echo ""
-    
+
+    show_success "Using devbox-lima.json as devbox.json"
+    cp devbox-lima.json devbox.json
+
     if [[ "$USE_PLAIN" == "true" ]]; then
         echo "======================================"
         echo "Lima setup complete!"
@@ -168,7 +171,7 @@ if [[ "$choice" == "1" ]]; then
             --margin "1 2" \
             --padding "2 4" \
             "✅ Lima Setup Complete!"
-        
+
         echo ""
         gum style --foreground 117 --bold "Next steps:"
         echo ""
@@ -179,30 +182,30 @@ if [[ "$choice" == "1" ]]; then
         gum style --foreground 183 "Connect to VM:"
         gum style --foreground 183 "  devbox run connect"
     fi
-    
+
 elif [[ "$choice" == "2" ]]; then
     # Vagrant setup
     echo ""
     show_info "Setting up with Vagrant..."
     echo ""
-    
+
     # Use ARM-optimized Vagrantfile for Apple Silicon
     if [[ "$ARCH" == "arm64" ]]; then
         show_info "Using ARM-optimized Vagrantfile..."
         cp Vagrantfile.arm Vagrantfile
     fi
-    
+
     # Check for virtualization providers
     show_info "Checking for virtualization providers..."
     echo ""
-    
+
     PROVIDER=""
-    
+
     # Check for VMware Fusion
     if command -v vmrun &> /dev/null; then
         show_success "VMware Fusion detected"
         PROVIDER="vmware_desktop"
-        
+
         # Check for vagrant plugin
         if ! vagrant plugin list | grep -q vagrant-vmware-desktop; then
             show_info "Installing Vagrant VMware plugin..."
@@ -216,7 +219,7 @@ elif [[ "$choice" == "2" ]]; then
     elif command -v prlctl &> /dev/null; then
         show_success "Parallels Desktop detected"
         PROVIDER="parallels"
-        
+
         # Check for vagrant plugin
         if ! vagrant plugin list | grep -q vagrant-parallels; then
             show_info "Installing Vagrant Parallels plugin..."
@@ -240,7 +243,7 @@ elif [[ "$choice" == "2" ]]; then
         echo ""
         exit 1
     fi
-    
+
     echo ""
     if [[ "$USE_PLAIN" == "true" ]]; then
         echo "======================================"
@@ -262,7 +265,7 @@ elif [[ "$choice" == "2" ]]; then
             --margin "1 2" \
             --padding "2 4" \
             "✅ Vagrant Setup Complete!"
-        
+
         echo ""
         gum style --foreground 117 --bold "Next steps:"
         echo ""

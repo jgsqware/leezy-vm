@@ -1,0 +1,56 @@
+{
+  // Tailscale ACL configuration for Leezy VM
+  // This is an example ACL that you can customize for your needs
+  // Upload this to https://login.tailscale.com/admin/acls
+  
+  "tagOwners": {
+    // Define tag owners for organizing devices
+    "tag:leezy-vm": ["autogroup:admin"],
+    "tag:proxy": ["autogroup:admin"],
+    "tag:dev": ["autogroup:admin"]
+  },
+  
+  "acls": [
+    // Allow all users to access their own devices
+    {
+      "action": "accept",
+      "src": ["autogroup:member"],
+      "dst": ["autogroup:self:*"]
+    },
+    
+    // Allow access to Leezy VM services
+    {
+      "action": "accept",
+      "src": ["autogroup:member"],
+      "dst": [
+        "tag:leezy-vm:22",     // SSH
+        "tag:leezy-vm:8888"    // TinyProxy
+      ]
+    },
+    
+    // Allow Leezy VM to access the internet
+    {
+      "action": "accept",
+      "src": ["tag:leezy-vm"],
+      "dst": ["*:*"]
+    }
+  ],
+  
+  "ssh": [
+    // Allow SSH access to Leezy VM
+    {
+      "action": "accept",
+      "src": ["autogroup:member"],
+      "dst": ["tag:leezy-vm"],
+      "users": ["root", "vagrant", "ubuntu"]
+    }
+  ],
+  
+  "nodeAttrs": [
+    // Advertise TinyProxy service
+    {
+      "target": ["tag:leezy-vm"],
+      "attr": ["funnel"]
+    }
+  ]
+}

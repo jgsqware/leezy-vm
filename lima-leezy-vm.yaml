@@ -1,11 +1,11 @@
 # Lima configuration for Leezy VM
 # Lightweight VM with SSH, Tailscale, and TinyProxy
 
-# VM Image - Alpine Linux for minimal footprint
+# VM Image - Ubuntu for better compatibility  
 images:
-  - location: "https://github.com/lima-vm/alpine-lima/releases/download/v0.2.37/alpine-lima-std-3.18.4-x86_64.iso"
+  - location: "https://cloud-images.ubuntu.com/releases/22.04/release-20231211.1/ubuntu-22.04-server-cloudimg-amd64.img"
     arch: "x86_64"
-  - location: "https://github.com/lima-vm/alpine-lima/releases/download/v0.2.37/alpine-lima-std-3.18.4-aarch64.iso"
+  - location: "https://cloud-images.ubuntu.com/releases/22.04/release-20231211.1/ubuntu-22.04-server-cloudimg-arm64.img"
     arch: "aarch64"
 
 # VM Resources
@@ -18,10 +18,8 @@ networks:
   - lima: shared
     # macAddress: "52:55:55:12:34:56" # Optionally set a static MAC
 
-# Port forwarding
+# Port forwarding (SSH port 22 is handled automatically by Lima)
 portForwards:
-  - guestPort: 22
-    hostPort: 0 # Random host port
   - guestPort: 8888
     hostPort: 8888 # TinyProxy
 
@@ -34,8 +32,9 @@ ssh:
 mounts:
   - location: "~"
     writable: false
-  - location: "/tmp/lima"
-    writable: true
+  - location: "./config"
+    mountPoint: "/tmp/leezy-config"
+    writable: false
 
 # Environment variables from .env file
 env:
@@ -47,70 +46,50 @@ env:
 provision:
   - mode: system
     script: |
-      #!/bin/sh
+      #!/bin/bash
       set -e
       
-      echo "Starting Leezy VM provisioning on Lima..."
+      echo "Starting Leezy VM provisioning on Lima (Ubuntu)..."
       
       # Update package repository
-      apk update
+      apt-get update
       
       # Install essential packages
-      apk add --no-cache \
-          openssh \
-          openssh-server \
+      apt-get install -y \
           curl \
           wget \
-          bash \
           sudo \
           iptables \
-          ip6tables \
-          ca-certificates
+          ca-certificates \
+          gnupg \
+          lsb-release
       
-      # Configure SSH
-      echo "Configuring SSH..."
-      rc-update add sshd default
-      rc-service sshd start || true
+      # SSH is already configured in Ubuntu cloud images
       
       # Install Tailscale
       echo "Installing Tailscale..."
-      apk add --no-cache tailscale
+      curl -fsSL https://tailscale.com/install.sh | sh
       
       # Enable and start Tailscale service
-      rc-update add tailscale default
-      rc-service tailscale start || true
+      systemctl enable tailscaled
+      systemctl start tailscaled
       
       # Install TinyProxy
       echo "Installing TinyProxy..."
-      apk add --no-cache tinyproxy
+      apt-get install -y tinyproxy
       
-      # Configure TinyProxy
-      cat > /etc/tinyproxy/tinyproxy.conf << 'EOF'
-      User tinyproxy
-      Group tinyproxy
-      Port 8888
-      Timeout 600
-      DefaultErrorFile "/usr/share/tinyproxy/default.html"
-      StatFile "/usr/share/tinyproxy/stats.html"
-      LogLevel Info
-      MaxClients 100
-      MinSpareServers 5
-      MaxSpareServers 20
-      StartServers 10
-      MaxRequestsPerChild 0
-      
-      # Allow connections from any IP
-      Allow 0.0.0.0/0
-      
-      # Connection settings
-      ConnectPort 443
-      ConnectPort 563
-      ConnectPort 80
-      EOF
+      # Copy TinyProxy configuration from mounted config
+      if [ -f /tmp/leezy-config/tinyproxy.conf ]; then
+          echo "Using custom TinyProxy configuration..."
+          cp /tmp/leezy-config/tinyproxy.conf /etc/tinyproxy/tinyproxy.conf
+      else
+          echo "Warning: Config file not found at /tmp/leezy-config/tinyproxy.conf"
+          echo "Using default TinyProxy configuration..."
+      fi
       
       # Enable and start TinyProxy service
-      rc-update add tinyproxy default
-      rc-service tinyproxy start || true
+      systemctl enable tinyproxy
+      systemctl restart tinyproxy
       
       echo "Base provisioning complete!"
 

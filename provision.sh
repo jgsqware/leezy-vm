@@ -3,6 +3,18 @@ set -e
 
 echo "Starting VM provisioning..."
 
+if [ -f /tmp/corporate-ca.crt ]; then
+    echo "Installing corporate CA certificate..."
+    cp /tmp/corporate-ca.crt /usr/local/share/ca-certificates/corporate-ca.crt
+    update-ca-certificates
+
+    # Also add to curl's cert bundle
+    cat /tmp/corporate-ca.crt >> /etc/ssl/certs/ca-certificates.crt
+fi
+
+export CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+
 # Update package repository
 apk update
 
@@ -40,20 +52,20 @@ rc-service tailscale start || true
 if [ ! -z "$TAILSCALE_AUTH_KEY" ]; then
     echo "Authenticating Tailscale with provided auth key..."
     sleep 2  # Give tailscale service time to fully start
-    
+
     # Build tailscale up command with options
     TS_CMD="tailscale up --authkey=\"$TAILSCALE_AUTH_KEY\""
-    
+
     # Add hostname if provided
     if [ ! -z "$TAILSCALE_HOSTNAME" ]; then
         TS_CMD="$TS_CMD --hostname=\"$TAILSCALE_HOSTNAME\""
     fi
-    
+
     # Add accept-routes flag if enabled
     if [ "$TAILSCALE_ACCEPT_ROUTES" = "true" ]; then
         TS_CMD="$TS_CMD --accept-routes"
     fi
-    
+
     # Execute the command
     eval $TS_CMD || {
         echo "Warning: Tailscale authentication failed. You may need to authenticate manually."
@@ -67,31 +79,11 @@ echo "Installing TinyProxy..."
 apk add --no-cache tinyproxy
 
 # Configure TinyProxy
-cat > /etc/tinyproxy/tinyproxy.conf << 'EOF'
-User tinyproxy
-Group tinyproxy
-Port 8888
-Timeout 600
-DefaultErrorFile "/usr/share/tinyproxy/default.html"
-StatFile "/usr/share/tinyproxy/stats.html"
-LogLevel Info
-MaxClients 100
-MinSpareServers 5
-MaxSpareServers 20
-StartServers 10
-MaxRequestsPerChild 0
-
-# Allow connections from any IP (adjust for security)
-Allow 0.0.0.0/0
-
-# Uncomment to add upstream proxy
-# Upstream http 127.0.0.1:8080
-
-# Connection settings
-ConnectPort 443
-ConnectPort 563
-ConnectPort 80
-EOF
+# Check if custom config exists in Vagrant shared folder
+if [ -f /vagrant/config/tinyproxy.conf ]; then
+    echo "Using custom TinyProxy configuration..."
+    cp /vagrant/config/tinyproxy.conf /etc/tinyproxy/tinyproxy.conf
+fi
 
 # Enable and start TinyProxy service
 rc-update add tinyproxy default

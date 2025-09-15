@@ -66,7 +66,14 @@ echo "Installing TinyProxy..."
 apt-get install -y tinyproxy
 
 # Configure TinyProxy
-cat > /etc/tinyproxy/tinyproxy.conf << 'EOF'
+# Check if custom config exists in Vagrant shared folder
+if [ -f /vagrant/config/tinyproxy.conf ]; then
+    echo "Using custom TinyProxy configuration..."
+    cp /vagrant/config/tinyproxy.conf /etc/tinyproxy/tinyproxy.conf
+else
+    echo "Using default TinyProxy configuration..."
+    # Fallback to embedded config if external file not found
+    cat > /etc/tinyproxy/tinyproxy.conf << 'EOF'
 User tinyproxy
 Group tinyproxy
 Port 8888
@@ -88,6 +95,7 @@ ConnectPort 443
 ConnectPort 563
 ConnectPort 80
 EOF
+fi
 
 # Enable and start TinyProxy service
 systemctl enable tinyproxy
