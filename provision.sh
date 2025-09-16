@@ -3,17 +3,11 @@ set -e
 
 echo "Starting VM provisioning..."
 
-if [ -f /tmp/corporate-ca.crt ]; then
+if [ -f /tmp/corporate-chain.pem ]; then
     echo "Installing corporate CA certificate..."
-    cp /tmp/corporate-ca.crt /usr/local/share/ca-certificates/corporate-ca.crt
+    cp /tmp/corporate-chain.pem /usr/local/share/ca-certificates/corporate-chain.crt
     update-ca-certificates
-
-    # Also add to curl's cert bundle
-    cat /tmp/corporate-ca.crt >> /etc/ssl/certs/ca-certificates.crt
 fi
-
-export CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
-export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 
 # Update package repository
 apk update
@@ -28,6 +22,8 @@ apk add --no-cache \
     sudo \
     iptables \
     ip6tables \
+    helix \
+    dos2unix \
     ca-certificates
 
 # Configure SSH
@@ -48,6 +44,7 @@ apk add --no-cache tailscale
 rc-update add tailscale default
 rc-service tailscale start || true
 
+
 # Auto-authenticate Tailscale if auth key is provided
 if [ ! -z "$TAILSCALE_AUTH_KEY" ]; then
     echo "Authenticating Tailscale with provided auth key..."
@@ -66,6 +63,19 @@ if [ ! -z "$TAILSCALE_AUTH_KEY" ]; then
         TS_CMD="$TS_CMD --accept-routes"
     fi
 
+    if [ "$TAILSCALE_ACCEPT_DNS" = "false" ]; then
+        TS_CMD="$TS_CMD --accept-dns=$TAILSCALE_ACCEPT_DNS"
+        cat > /etc/resolv.conf << 'EOF'
+nameserver 8.8.8.8
+nameserver 1.1.1.1
+nameserver 10.25.29.1
+search tail98dd.ts.net local
+EOF
+    else
+        TS_CMD="$TS_CMD --accept-dns=$TAILSCALE_ACCEPT_DNS"
+    fi
+
+    tailscale down || true
     # Execute the command
     eval $TS_CMD || {
         echo "Warning: Tailscale authentication failed. You may need to authenticate manually."
@@ -80,13 +90,16 @@ apk add --no-cache tinyproxy
 
 # Configure TinyProxy
 # Check if custom config exists in Vagrant shared folder
-if [ -f /vagrant/config/tinyproxy.conf ]; then
+if [ -f /tmp/tinyproxy.conf ]; then
     echo "Using custom TinyProxy configuration..."
-    cp /vagrant/config/tinyproxy.conf /etc/tinyproxy/tinyproxy.conf
+    cp /tmp/tinyproxy.conf /etc/tinyproxy/tinyproxy.conf
+    dos2unix /etc/tinyproxy/tinyproxy.conf
 fi
 
+mkdir -p /var/run/tinyproxy /var/log/tinyproxy
 # Enable and start TinyProxy service
 rc-update add tinyproxy default
+sed -i 's|=/run|=/var/run/tinyproxy/|' /etc/init.d/tinyproxy
 rc-service tinyproxy start || true
 
 # Create a startup script for Tailscale authentication

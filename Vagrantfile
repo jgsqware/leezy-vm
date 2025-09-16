@@ -20,7 +20,7 @@ Vagrant.configure("2") do |config|
 
   # Forward TinyProxy port
   config.vm.network "forwarded_port", guest: 8888, host: 8888
-
+  config.vm.network "public_network"
   # VMware Fusion provider (recommended for Apple Silicon)
   config.vm.provider "vmware_desktop" do |vmware|
     vmware.vmx["displayname"] = "leezy-vm"
@@ -46,14 +46,17 @@ Vagrant.configure("2") do |config|
   tailscale_auth_key = ENV['TAILSCALE_AUTH_KEY'] || ""
   tailscale_hostname = ENV['TAILSCALE_HOSTNAME'] || "leezy-vm"
   tailscale_accept_routes = ENV['TAILSCALE_ACCEPT_ROUTES'] || "true"
+  tailscale_accept_dns = ENV['TAILSCALE_ACCEPT_DNS'] || "true"
 
 
-  config.vm.provision "file", source: "./corporate-ca.crt", destination: "/tmp/corporate-ca.crt"
+  config.vm.provision "file", source: "./ssl/corporate-chain.pem", destination: "/tmp/corporate-chain.pem"
+  config.vm.provision "file", source: "./config/tinyproxy.conf", destination: "/tmp/tinyproxy.conf"
 
   # Provisioning - adapted for Ubuntu/Debian systems
   config.vm.provision "shell", path: "provision.sh", env: {
     "TAILSCALE_AUTH_KEY" => tailscale_auth_key,
     "TAILSCALE_HOSTNAME" => tailscale_hostname,
-    "TAILSCALE_ACCEPT_ROUTES" => tailscale_accept_routes
+    "TAILSCALE_ACCEPT_ROUTES" => tailscale_accept_routes,
+    "TAILSCALE_ACCEPT_DNS" => tailscale_accept_dns
   }
 end

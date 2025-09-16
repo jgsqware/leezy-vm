@@ -21,3 +21,5 @@ devbox.lock
 # OS files
 .DS_Store
 Thumbs.db
+
+ssl/
