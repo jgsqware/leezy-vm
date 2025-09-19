@@ -1,0 +1,31 @@
+services:
+  leezy-vm:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - USERNAME=${USER}
+        - USER_UID=${USER_UID}
+        - USER_GID=${USER_GID}
+        - GROUPNAME=${GROUPNAME}
+    container_name: ${TAILSCALE_HOSTNAME:-leezy-vm}
+    hostname: ${TAILSCALE_HOSTNAME:-leezy-vm}
+    ports:
+      - "8888:8888" # TinyProxy port
+    environment:
+      - TAILSCALE_AUTH_KEY=${TAILSCALE_AUTH_KEY}
+      - TAILSCALE_HOSTNAME=${TAILSCALE_HOSTNAME:-leezy-vm}
+      - TAILSCALE_ACCEPT_ROUTES=${TAILSCALE_ACCEPT_ROUTES:-true}
+      - TAILSCALE_ACCEPT_DNS=${TAILSCALE_ACCEPT_DNS:-true}
+    volumes:
+      # - ./ssl/corporate-chain.pem:/tmp/corporate-chain.pem:ro
+      - ./config/tinyproxy.conf:/tmp/tinyproxy.conf:ro
+      - ./devbox.json:/workspace/devbox.json:ro
+      - .:/workspace:rw
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    restart: unless-stopped
+    command: ["/bin/bash", "-c", "sudo /provision.sh && tail -f /dev/null"]

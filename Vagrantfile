@@ -12,8 +12,13 @@ if File.exist?('.env')
 end
 
 Vagrant.configure("2") do |config|
-  # Use Ubuntu ARM64 box for Apple Silicon compatibility
-  config.vm.box = "generic/alpine318"
+  # Only set the box for non-Docker providers
+  if ENV['VAGRANT_DEFAULT_PROVIDER'] != 'docker'
+    # Use Ubuntu ARM64 box for Apple Silicon compatibility
+    config.vm.box = "generic/alpine318"
+  end
+
+  if EN
 
   # VM configuration
   config.vm.hostname = ENV['TAILSCALE_HOSTNAME'] || "leezy-vm"
@@ -47,16 +52,19 @@ Vagrant.configure("2") do |config|
   tailscale_hostname = ENV['TAILSCALE_HOSTNAME'] || "leezy-vm"
   tailscale_accept_routes = ENV['TAILSCALE_ACCEPT_ROUTES'] || "true"
   tailscale_accept_dns = ENV['TAILSCALE_ACCEPT_DNS'] || "true"
+  tailscaled_opts = ENV['TAILSCALED_OPTS'] || ""
 
 
-  config.vm.provision "file", source: "./ssl/corporate-chain.pem", destination: "/tmp/corporate-chain.pem"
-  config.vm.provision "file", source: "./config/tinyproxy.conf", destination: "/tmp/tinyproxy.conf"
+    if File.exist?('./ssl/corporate-chain.pem')
+        config.vm.provision "file", source: "./ssl/corporate-chain.pem", destination: "/tmp/corporate-chain.pem"
+    end
 
   # Provisioning - adapted for Ubuntu/Debian systems
   config.vm.provision "shell", path: "provision.sh", env: {
     "TAILSCALE_AUTH_KEY" => tailscale_auth_key,
     "TAILSCALE_HOSTNAME" => tailscale_hostname,
     "TAILSCALE_ACCEPT_ROUTES" => tailscale_accept_routes,
-    "TAILSCALE_ACCEPT_DNS" => tailscale_accept_dns
+    "TAILSCALE_ACCEPT_DNS" => tailscale_accept_dns,
+    "TAILSCALED_OPTS" => tailscaled_opts
   }
 end

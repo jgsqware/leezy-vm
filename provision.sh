@@ -68,7 +68,6 @@ if [ ! -z "$TAILSCALE_AUTH_KEY" ]; then
         cat > /etc/resolv.conf << 'EOF'
 nameserver 8.8.8.8
 nameserver 1.1.1.1
-nameserver 10.25.29.1
 search tail98dd.ts.net local
 EOF
     else
@@ -83,24 +82,6 @@ EOF
     echo "Tailscale authentication attempted. Checking status..."
     tailscale status || true
 fi
-
-# Install TinyProxy
-echo "Installing TinyProxy..."
-apk add --no-cache tinyproxy
-
-# Configure TinyProxy
-# Check if custom config exists in Vagrant shared folder
-if [ -f /tmp/tinyproxy.conf ]; then
-    echo "Using custom TinyProxy configuration..."
-    cp /tmp/tinyproxy.conf /etc/tinyproxy/tinyproxy.conf
-    dos2unix /etc/tinyproxy/tinyproxy.conf
-fi
-
-mkdir -p /var/run/tinyproxy /var/log/tinyproxy
-# Enable and start TinyProxy service
-rc-update add tinyproxy default
-sed -i 's|=/run|=/var/run/tinyproxy/|' /etc/init.d/tinyproxy
-rc-service tinyproxy start || true
 
 # Create a startup script for Tailscale authentication
 cat > /home/vagrant/tailscale-setup.sh << 'EOF'
@@ -133,14 +114,10 @@ if [ ! -z "$TAILSCALE_AUTH_KEY" ]; then
 else
     echo "  - Tailscale (not authenticated yet)"
 fi
-echo "  - TinyProxy (port 8888)"
 echo ""
 if [ -z "$TAILSCALE_AUTH_KEY" ]; then
     echo "To complete Tailscale setup, SSH into the VM and run:"
     echo "  ./tailscale-setup.sh"
     echo ""
 fi
-echo "TinyProxy is accessible on:"
-echo "  - Guest: 0.0.0.0:8888"
-echo "  - Host: localhost:8888"
 echo "===================================="
